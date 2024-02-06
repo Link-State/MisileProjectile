@@ -1,0 +1,8 @@
+main: main.Main
+name: MissileProjectile
+version: 1.0
+api-version: 1.20
+author: Link_State
+website: https://github.com/Link-State
+commands:
+  missileProjectile:
