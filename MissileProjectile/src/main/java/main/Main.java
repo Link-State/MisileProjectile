@@ -50,7 +50,7 @@ public class Main extends JavaPlugin {
         	e.printStackTrace();
         }
         
-//		Bukkit.getPluginManager().registerEvents(new MissileArrow(), this);
+		Bukkit.getPluginManager().registerEvents(new MissileShoot(), this);
 	}
 	
 	@Override
@@ -66,7 +66,15 @@ public class Main extends JavaPlugin {
 	
 	// 테이블 생성 함수
 	public void createSchema() throws SQLException {
-        //
+
+        // 공통 테이블 생성
+        String Global_Schema = "CREATE TABLE IF NOT EXISTS Global ( 							"+"\n"
+        		+ "  id					INTEGER				PRIMARY KEY			AUTOINCREMENT,	"+"\n"
+        		+ "  projectile      	TEXT,				DEFAULT \"\"						"+"\n"
+        		+ "  )";
+        createTable("Shooter", Global_Schema);
+        
+        // 발사자 테이블 생성
         String Shooter_Schema = "CREATE TABLE IF NOT EXISTS Shooter ( "+"\n"
         		+ "  name				TEXT           NOT NULL,      "+"\n"
         		+ "  uuid      	  		TEXT,						  "+"\n"
@@ -74,12 +82,7 @@ public class Main extends JavaPlugin {
         		+ "  PRIMARY KEY (name)         				)";
         createTable("Shooter", Shooter_Schema);
         
-        String Global_Schema = "CREATE TABLE IF NOT EXISTS Global ( 							"+"\n"
-        		+ "  id					INTEGER				PRIMARY KEY			AUTOINCREMENT,	"+"\n"
-        		+ "  projectile      	TEXT,				DEFAULT \"\"						"+"\n"
-        		+ "  )";
-        createTable("Shooter", Global_Schema);
-        
+        // Projectile인 Entity들 가져오기
         ArrayList<String> projectiles = new ArrayList<String>(); 
         EntityType[] entities = EntityType.values();
         for (EntityType entity : entities) {
@@ -100,20 +103,24 @@ public class Main extends JavaPlugin {
     		}
         }
         
+        // 발사체 테이블 생성
         String ProjectileMap_SQL = null;
         for (String prj : projectiles) {
             ProjectileMap_SQL = "CREATE TABLE IF NOT EXISTS " + prj + " ("+"\n"
-            		+ "  name			TEXT		PRIMARY KEY,		 "+"\n"
-            		+ "  isEnable		BOOLEAN		NOT NULL,			 "+"\n"
-            		+ "  targetMethod	INTEGER		DEFAULT 0,			 "+"\n"
-            		+ "  isTrace		BOOLEAN		DEFAULT false,		 "+"\n"
+            		+ "  name				TEXT		PRIMARY KEY,		 "+"\n"
+            		+ "  isEnable			BOOLEAN		NOT NULL,			 "+"\n"
+            		+ "  targetPriority		INTEGER		DEFAULT 0,			 "+"\n"
+            		+ "  isTrace			BOOLEAN		DEFAULT false,		 "+"\n"
+            		+ "  hasGravity			BOOLEAN     DEFAULT false,			 "+"\n"
+            		+ "  minDistance		REAL     	DEFAULT 0.0,			 "+"\n"
+            		+ "  maxDistance		REAL     	DEFAULT 23.0,			 "+"\n"
+            		+ "  RecogRange			REAL     	DEFAULT 23.0,			 "+"\n"
+            		+ "  minAngle			REAL     	DEFAULT 0.0,			 "+"\n"
+            		+ "  maxAngle			REAL     	DEFAULT 70.0,			 "+"\n"
             		+ "  FOREIGN KEY (name) REFERENCES Shooter(name)	 "+"\n"
             		+ "  )";
             createTable("ProjectileMap", ProjectileMap_SQL);
         }
-        
-        // ProjectileMap_SQL의 컬럼에 모든 발사체 타입이 있는지 확인
-        // 없으면 새 컬럼 생성
         
         // DB 연결 종료
         DDL.closeConnection();
