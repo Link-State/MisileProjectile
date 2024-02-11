@@ -9,7 +9,6 @@ public class SQLiteManager {
     // 상수 설정
     //   - Database 변수
     private static final String SQLITE_JDBC_DRIVER = "org.sqlite.JDBC";
-    private static final String SQLITE_FILE_DB_URL = "jdbc:sqlite:quartz.db";
     private static final String SQLITE_MEMORY_DB_URL = "jdbc:sqlite::memory";
  
     //  - Database 옵션 변수
@@ -23,9 +22,6 @@ public class SQLiteManager {
     private String url = null;
  
     // 생성자
-    public SQLiteManager(){
-        this(SQLITE_FILE_DB_URL);
-    }
     public SQLiteManager(String url) {
         // JDBC Driver 설정
         this.driver = SQLITE_JDBC_DRIVER;
@@ -40,9 +36,6 @@ public class SQLiteManager {
  
             // DB 연결 객체 생성
             this.conn = DriverManager.getConnection(this.url);
- 
-            // 로그 출력
-            System.out.println("CONNECTED");
  
             // 옵션 설정
             //   - 자동 커밋
@@ -65,9 +58,6 @@ public class SQLiteManager {
             e.printStackTrace();
         } finally {
             this.conn = null;
- 
-            // 로그 출력
-            System.out.println("CLOSED");
         }
     }
  

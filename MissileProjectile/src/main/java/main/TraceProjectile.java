@@ -1,9 +1,13 @@
 package main;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -13,35 +17,49 @@ import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.Vector;
 
-public class MissileShoot implements Listener {
-
-	/*
-	 * targetPriority
-	 * 0 - 발사자로부터 가장 가까이 있고 조준선으로부터 가장 가까이 있는 대상
-	 * 1 - 발사자로부터 가장 가까이 있고 조준선으로부터 가장 멀리 있는 대상
-	 * 2 - 발사자로부터 가장 멀리 있고 조준선으로부터 가장 가까이 있는 대상
-	 * 3 - 발사자로부터 가장 멀리 있고 조준선으로부터 가장 멀리 있는 대상
-	 * 4 - 랜덤
-	 */
+public class TraceProjectile implements Listener {
 	
 	@EventHandler
-	public void launchedMissile(ProjectileLaunchEvent e) {
-		Projectile prj = e.getEntity();
+	public void launchedProjectile(ProjectileLaunchEvent e) {
 		
-		// DB에서 발사자 정보 가져오기
-		if (!(prj.getShooter() instanceof Player)) {
+		Projectile prj = e.getEntity();
+		ProjectileSource source = prj.getShooter();
+		
+		if (source == null) {
 			return;
 		}
 		
-		// 대상 우선순위
-		// 발사체 중력여부
-		// 죽음의추격 여부
-		// 최소거리, 최대거리 가져오기
-		// 인식범위, 최소각도, 최대각도 가져오기
-		ProjectileSource shooter = prj.getShooter();
-		Player p = (Player) shooter;
+		String prjType = prj.getType().getKey().getKey().toString().toUpperCase();
+		LivingEntity shooter = null;
+		if (!(source instanceof LivingEntity)) {
+			return;
+		}
+
+		// SQL에서 발사자 정보 가져옴,
+		// SQL에서 해당 엔티티의 발사체 고유 정보 가져옴
+		shooter = (LivingEntity) source;
 		
-		ArrayList<Entity> entities = new ArrayList<Entity>(p.getNearbyEntities(23, 23, 23));
+		final Map<String, Object> dataMap = new HashMap<String, Object>();
+        dataMap.put("name"   , shooter.getName());
+        
+        // 데이터 조회
+        List<Map<String, Object>> result = Main.DQL.selectProjectile(prjType, dataMap);
+        
+        // DB 생성
+        if (result.size() <= 0) {
+        	return;
+        }
+        
+        // 조회 결과 출력
+        Main.DQL.printMapList(result);
+		
+		// 해당 발사체 유도 활성화 검사
+		
+		
+		
+		// 발사체 유도
+		
+		ArrayList<Entity> entities = new ArrayList<Entity>(shooter.getNearbyEntities(23, 23, 23));
 		
 		if (entities.size() <= 0) {
 			return;
@@ -61,11 +79,11 @@ public class MissileShoot implements Listener {
 			
 			// 몹의 위치 - 내 위치
 			Vector player2target_vec = new Vector(
-					living_entity.getEyeLocation().getX() - p.getEyeLocation().getX(),
-					(living_entity.getLocation().getY() + (living_entity.getHeight() / 2.0)) - p.getEyeLocation().getY(),
-					living_entity.getEyeLocation().getZ() - p.getEyeLocation().getZ());
+					living_entity.getEyeLocation().getX() - shooter.getEyeLocation().getX(),
+					(living_entity.getLocation().getY() + (living_entity.getHeight() / 2.0)) - shooter.getEyeLocation().getY(),
+					living_entity.getEyeLocation().getZ() - shooter.getEyeLocation().getZ());
 			
-			double angle = player2target_vec.angle(p.getLocation().getDirection()) * (180/Math.PI);
+			double angle = player2target_vec.angle(shooter.getLocation().getDirection()) * (180/Math.PI);
 			
 			if (angle > 70.0) {
 				continue;
@@ -92,7 +110,7 @@ public class MissileShoot implements Listener {
 		}
 		
 		System.out.println(" -> " + target.getName() + " : " + maxAngle);
-		System.out.println(p.getVelocity());
+		System.out.println(shooter.getVelocity());
 		
 		System.out.println("--------------------------------------------");
 		
@@ -107,5 +125,9 @@ public class MissileShoot implements Listener {
 		
 		prj.setVelocity(missileVec);
 		prj.setRotation(direction.getYaw(), direction.getPitch());
+		
+		
+		
+		// 죽음의 추격 활성화 시, SQL에 해당 발사체 등록 및 쓰레드 실행
 	}
 }

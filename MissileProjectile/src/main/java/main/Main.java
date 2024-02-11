@@ -3,8 +3,8 @@ package main;
 import java.io.File;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import org.bukkit.Bukkit;
@@ -29,20 +29,24 @@ public class Main extends JavaPlugin {
 	public static Plugin PLUGINS = null;
 	public static String DB_URL = null;
 	
-	DDLService DDL = null;
+	public static DDLService DDL = null;
+	public static DMLService DML = null;
+	public static DQLService DQL = null;
     
 	@Override
 	public void onEnable() {
 		PLUGINS = Bukkit.getPluginManager().getPlugin("MissileProjectile");
 		DB_URL = "jdbc:sqlite:" + PLUGINS.getDataFolder() + File.separator + "data.db";
 		
-		SQLiteManager manager = new SQLiteManager(DB_URL);
-		
-        manager.createConnection();     // 연결
-        manager.closeConnection();      // 연결 해제
-        manager.ensureConnection();     // 재연결
+		File plugin_folder = PLUGINS.getDataFolder();
+		if (!plugin_folder.exists()) {
+			plugin_folder.mkdirs();
+		}
         
         DDL = new DDLService(DB_URL);
+        DML = new DMLService(DB_URL);
+        DQL = new DQLService(DB_URL);
+        
         try {
         	createSchema();   // 테이블 생성
         }
@@ -50,7 +54,8 @@ public class Main extends JavaPlugin {
         	e.printStackTrace();
         }
         
-		Bukkit.getPluginManager().registerEvents(new MissileShoot(), this);
+//		Bukkit.getPluginManager().registerEvents(new MissileShoot(), this);
+		Bukkit.getPluginManager().registerEvents(new TraceProjectile(), this);
 	}
 	
 	@Override
@@ -68,17 +73,19 @@ public class Main extends JavaPlugin {
 	public void createSchema() throws SQLException {
 
         // 공통 테이블 생성
-        String Global_Schema = "CREATE TABLE IF NOT EXISTS Global ( 							"+"\n"
-        		+ "  id					INTEGER				PRIMARY KEY			AUTOINCREMENT,	"+"\n"
-        		+ "  projectile      	TEXT,				DEFAULT \"\"						"+"\n"
+        final String Global_Schema = "CREATE TABLE IF NOT EXISTS Global ( 							"+"\n"
+        		+ "  id					INTEGER				PRIMARY KEY			AUTOINCREMENT,		"+"\n"
+        		+ "  projectile      	TEXT				DEFAULT '',								"+"\n"
+        		+ "  lastModified      	DATETIME													"+"\n"
         		+ "  )";
-        createTable("Shooter", Global_Schema);
+        createTable("Global", Global_Schema);
         
         // 발사자 테이블 생성
-        String Shooter_Schema = "CREATE TABLE IF NOT EXISTS Shooter ( "+"\n"
+        final String Shooter_Schema = "CREATE TABLE IF NOT EXISTS Shooter ( "+"\n"
         		+ "  name				TEXT           NOT NULL,      "+"\n"
         		+ "  uuid      	  		TEXT,						  "+"\n"
         		+ "  entityType			INTEGER        NOT NULL,      "+"\n"
+        		+ "  lastModified      	DATETIME,					  "+"\n"
         		+ "  PRIMARY KEY (name)         				)";
         createTable("Shooter", Shooter_Schema);
         
@@ -99,7 +106,7 @@ public class Main extends JavaPlugin {
     				continue;
     			}
     			
-				projectiles.add(entity_class.getSimpleName());
+				projectiles.add(entity_class.getSimpleName().toUpperCase());
     		}
         }
         
@@ -111,19 +118,35 @@ public class Main extends JavaPlugin {
             		+ "  isEnable			BOOLEAN		NOT NULL,			 "+"\n"
             		+ "  targetPriority		INTEGER		DEFAULT 0,			 "+"\n"
             		+ "  isTrace			BOOLEAN		DEFAULT false,		 "+"\n"
-            		+ "  hasGravity			BOOLEAN     DEFAULT false,			 "+"\n"
-            		+ "  minDistance		REAL     	DEFAULT 0.0,			 "+"\n"
-            		+ "  maxDistance		REAL     	DEFAULT 23.0,			 "+"\n"
-            		+ "  RecogRange			REAL     	DEFAULT 23.0,			 "+"\n"
-            		+ "  minAngle			REAL     	DEFAULT 0.0,			 "+"\n"
-            		+ "  maxAngle			REAL     	DEFAULT 70.0,			 "+"\n"
-            		+ "  FOREIGN KEY (name) REFERENCES Shooter(name)	 "+"\n"
+            		+ "  hasGravity			BOOLEAN     DEFAULT false,		 "+"\n"
+            		+ "  minDistance		REAL     	DEFAULT 0.0,		 "+"\n"
+            		+ "  maxDistance		REAL     	DEFAULT 23.0,		 "+"\n"
+            		+ "  RecogRange			REAL     	DEFAULT 23.0,		 "+"\n"
+            		+ "  minAngle			REAL     	DEFAULT 0.0,		 "+"\n"
+            		+ "  maxAngle			REAL     	DEFAULT 70.0,		 "+"\n"
+            		+ "  lastModified      	DATETIME,						 "+"\n"
+            		+ "  FOREIGN KEY (name) REFERENCES Shooter(name)		 "+"\n"
             		+ "  )";
-            createTable("ProjectileMap", ProjectileMap_SQL);
+            createTable(prj, ProjectileMap_SQL);
         }
         
         // DB 연결 종료
         DDL.closeConnection();
+        
+        // 상수 설정
+        //   - Data를 저장할 객체 생성
+        //     * 입력/수정/삭제/조회 에서 공통으로 사용
+        final Map<String, Object> dataMap = new HashMap<String, Object>();
+        dataMap.put("id", 1);
+        dataMap.put("projectile", String.join(",", projectiles));
+ 
+        // 데이터 입력
+        int inserted = DML.insertGlobal(dataMap);
+        if( inserted >= 0 ) {
+            System.out.println(String.format("input success: %d", inserted));
+        } else {
+            System.out.println("input failed");
+        }
 	}
 	
 	public void createTable(String name, String sql) throws SQLException {
@@ -133,14 +156,18 @@ public class Main extends JavaPlugin {
         // 테이블 생성 결과 출력
         switch( result ) {
             case SUCCESS:
-                System.out.println("Success Create Table");
+                System.out.println("[MissileProjectile] Success Create Table - " + name);
                 break;
             case WARNING:
-                System.out.println("Already Exist Table");
+                System.out.println("[MissileProjectile] Already Exist Table - " + name);
                 break;
             case FAILURE:
-                System.out.println("Failed Create Table");
+                System.out.println("[MissileProjectile] Failed Create Table - " + name);
                 break;
         }
+	}
+	
+	public void insertInitData() {
+		
 	}
 }

@@ -7,9 +7,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class DDLService extends SQLiteManager {
+	
    // 생성자
-   public DDLService() {
-   }
    public DDLService(String url) {
        super(url);
    }
