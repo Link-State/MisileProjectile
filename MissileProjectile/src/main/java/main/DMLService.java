@@ -9,10 +9,6 @@ import java.util.Map;
  
 public class DMLService extends SQLiteManager {
     
-    // 상수 설정
-    //   - DateFormat 설정
-    public static final SimpleDateFormat DATETIME_FMT = new SimpleDateFormat("yyyyMMddHHmmss");
-    
     // 생성자
     public DMLService(String url) {
         super(url);
@@ -28,7 +24,11 @@ public class DMLService extends SQLiteManager {
                    + "    ?,                          "+"\n"
                    + "    ?                           "+"\n"
                    + ")";
- 
+
+        // 상수 설정
+        //   - DateFormat 설정
+        SimpleDateFormat DATETIME_FMT = new SimpleDateFormat("yyyyMMddHHmmss");
+        
         // 변수설정
         //   - Database 변수
         Connection conn = ensureConnection();
@@ -96,7 +96,11 @@ public class DMLService extends SQLiteManager {
                    + "    ?,                            "+"\n"
                    + "    ?                             "+"\n"
                    + ")";
- 
+
+        // 상수 설정
+        //   - DateFormat 설정
+        SimpleDateFormat DATETIME_FMT = new SimpleDateFormat("yyyyMMddHHmmss");
+        
         // 변수설정
         //   - Database 변수
         Connection conn = ensureConnection();
@@ -180,7 +184,11 @@ public class DMLService extends SQLiteManager {
                    + "    ?,                          "+"\n"
                    + "    ?                           "+"\n"
                    + ")";
- 
+
+        // 상수 설정
+        //   - DateFormat 설정
+        SimpleDateFormat DATETIME_FMT = new SimpleDateFormat("yyyyMMddHHmmss");
+        
         // 변수설정
         //   - Database 변수
         Connection conn = ensureConnection();

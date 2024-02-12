@@ -4,10 +4,13 @@ import java.io.File;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
@@ -28,6 +31,7 @@ import main.DDLService.ResultType;
 public class Main extends JavaPlugin {
 	public static Plugin PLUGINS = null;
 	public static String DB_URL = null;
+	public static HashSet<Class<?>> PROJECTILES = null;
 	
 	public static DDLService DDL = null;
 	public static DMLService DML = null;
@@ -37,11 +41,32 @@ public class Main extends JavaPlugin {
 	public void onEnable() {
 		PLUGINS = Bukkit.getPluginManager().getPlugin("MissileProjectile");
 		DB_URL = "jdbc:sqlite:" + PLUGINS.getDataFolder() + File.separator + "data.db";
+		PROJECTILES = new HashSet<Class<?>>();
 		
 		File plugin_folder = PLUGINS.getDataFolder();
 		if (!plugin_folder.exists()) {
 			plugin_folder.mkdirs();
 		}
+
+        // Projectile인 Entity들 가져오기
+        EntityType[] entities = EntityType.values();
+        for (EntityType entity : entities) {
+        	Class<? extends Entity> entity_class = entity.getEntityClass();
+        	if (entity_class == null) {
+        		continue;
+        	}
+    		Set<?> subinterface_list = TypeToken.of(entity_class).getTypes().interfaces();
+    		
+    		for (Object subinterface : subinterface_list) {
+    			String subinterfaceName = subinterface.toString();
+    			
+    			if (!subinterfaceName.equals(Projectile.class.getName())) {
+    				continue;
+    			}
+    			
+    			PROJECTILES.add(entity_class);
+    		}
+        }
         
         DDL = new DDLService(DB_URL);
         DML = new DMLService(DB_URL);
@@ -55,6 +80,7 @@ public class Main extends JavaPlugin {
         }
         
 //		Bukkit.getPluginManager().registerEvents(new MissileShoot(), this);
+		Bukkit.getPluginManager().registerEvents(new PlayerIO(), this);
 		Bukkit.getPluginManager().registerEvents(new TraceProjectile(), this);
 	}
 	
@@ -89,30 +115,11 @@ public class Main extends JavaPlugin {
         		+ "  PRIMARY KEY (name)         				)";
         createTable("Shooter", Shooter_Schema);
         
-        // Projectile인 Entity들 가져오기
-        ArrayList<String> projectiles = new ArrayList<String>(); 
-        EntityType[] entities = EntityType.values();
-        for (EntityType entity : entities) {
-        	Class<? extends Entity> entity_class = entity.getEntityClass();
-        	if (entity_class == null) {
-        		continue;
-        	}
-    		Set<?> subinterface_list = TypeToken.of(entity_class).getTypes().interfaces();
-    		
-    		for (Object subinterface : subinterface_list) {
-    			String subinterfaceName = subinterface.toString();
-    			
-    			if (!subinterfaceName.equals(Projectile.class.getName())) {
-    				continue;
-    			}
-    			
-				projectiles.add(entity_class.getSimpleName().toUpperCase());
-    		}
-        }
-        
         // 발사체 테이블 생성
         String ProjectileMap_SQL = null;
-        for (String prj : projectiles) {
+        for (Class<?> cls : PROJECTILES) {
+        	String prj = cls.getSimpleName().toUpperCase();
+        	
             ProjectileMap_SQL = "CREATE TABLE IF NOT EXISTS " + prj + " ("+"\n"
             		+ "  name				TEXT		PRIMARY KEY,		 "+"\n"
             		+ "  isEnable			BOOLEAN		NOT NULL,			 "+"\n"
@@ -132,21 +139,10 @@ public class Main extends JavaPlugin {
         
         // DB 연결 종료
         DDL.closeConnection();
+
         
-        // 상수 설정
-        //   - Data를 저장할 객체 생성
-        //     * 입력/수정/삭제/조회 에서 공통으로 사용
-        final Map<String, Object> dataMap = new HashMap<String, Object>();
-        dataMap.put("id", 1);
-        dataMap.put("projectile", String.join(",", projectiles));
- 
-        // 데이터 입력
-        int inserted = DML.insertGlobal(dataMap);
-        if( inserted >= 0 ) {
-            System.out.println(String.format("input success: %d", inserted));
-        } else {
-            System.out.println("input failed");
-        }
+        // 초기데이터 삽입
+        insertInitData();
 	}
 	
 	public void createTable(String name, String sql) throws SQLException {
@@ -167,7 +163,105 @@ public class Main extends JavaPlugin {
         }
 	}
 	
-	public void insertInitData() {
+	public void insertInitData() throws SQLException {
+        // 상수 설정
+        //   - Data를 저장할 객체 생성
+        //     * 입력/수정/삭제/조회 에서 공통으로 사용
+		ArrayList<String> projectiles = new ArrayList<String>();
+		for (Class<?> cls : PROJECTILES) {
+			projectiles.add(cls.getSimpleName().toUpperCase());
+		}
 		
+        final Map<String, Object> dataMap = new HashMap<String, Object>();
+        dataMap.put("id", 1);
+        
+        List<Map<String, Object>> resultList = DQL.selectGlobal(dataMap);
+        if (resultList.size() > 0) {
+            dataMap.put("projectile", String.join(",", projectiles));
+            
+            // 데이터 입력
+            int inserted = DML.insertGlobal(dataMap);
+            if( inserted < 0 ) {
+                System.out.println("[MissileProjectile] init data input failed");
+            }
+        }
+        
+        
+		OfflinePlayer[] all_players = Bukkit.getOfflinePlayers();
+		EntityType[] all_entities = EntityType.values();
+
+		for (OfflinePlayer offline_p : all_players) {
+			dataMap.clear();
+			
+			// Shooter
+			dataMap.put("name", offline_p.getName());
+            resultList = DQL.selectShooter(dataMap);
+
+            if (resultList.size() <= 0) {
+    			dataMap.put("uuid", offline_p.getUniqueId().toString().toUpperCase());
+    			dataMap.put("entityType", 0);
+    			DML.insertShooter(dataMap);
+            }
+
+			for (String prj : projectiles) {
+				dataMap.clear();
+	            dataMap.put("name", offline_p.getName());
+	            resultList = DQL.selectProjectile(prj, dataMap);
+	            
+	            if (resultList.size() > 0) {
+	            	continue;
+	            }
+	            
+	            dataMap.put("isEnable", false);
+	            dataMap.put("targetPriority", 0);
+	            dataMap.put("isTrace", false);
+	            dataMap.put("hasGravity", true);
+	            dataMap.put("minDistance", 0.0);
+	            dataMap.put("maxDistance", 5.0);
+	            dataMap.put("RecogRange", 23.0);
+	            dataMap.put("minAngle", 0.0);
+	            dataMap.put("maxAngle", 70.0);
+	            DML.insertProjectile(prj, dataMap);
+			}
+		}
+
+		for (EntityType entity : all_entities) {
+			if (!entity.isAlive() || entity.equals(EntityType.PLAYER)) {
+				continue;
+			}
+
+			dataMap.clear();
+			
+			// Shooter
+			dataMap.put("name", entity.getKey().getKey().toUpperCase());
+            resultList = DQL.selectShooter(dataMap);
+
+            if (resultList.size() <= 0) {
+    			dataMap.put("uuid", "");
+    			dataMap.put("entityType", 1);
+    			DML.insertShooter(dataMap);
+            }
+
+			for (String prj : projectiles) {
+				dataMap.clear();
+	            dataMap.put("name", entity.getKey().getKey().toUpperCase());
+	            resultList = DQL.selectProjectile(prj, dataMap);
+	            
+	            if (resultList.size() > 0) {
+	            	continue;
+	            }
+	            
+	            dataMap.put("isEnable", false);
+	            dataMap.put("targetPriority", 0);
+	            dataMap.put("isTrace", false);
+	            dataMap.put("hasGravity", true);
+	            dataMap.put("minDistance", 0.0);
+	            dataMap.put("maxDistance", 5.0);
+	            dataMap.put("RecogRange", 23.0);
+	            dataMap.put("minAngle", 0.0);
+	            dataMap.put("maxAngle", 70.0);
+	            DML.insertProjectile(prj, dataMap);
+			}
+		}
 	}
 }

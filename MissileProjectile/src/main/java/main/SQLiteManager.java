@@ -27,7 +27,7 @@ public class SQLiteManager {
         this.driver = SQLITE_JDBC_DRIVER;
         this.url = url;
     }
- 
+    
     // DB 연결 함수
     public Connection createConnection() {
         try {

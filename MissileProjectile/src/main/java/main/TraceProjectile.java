@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.Vector;
@@ -29,7 +30,6 @@ public class TraceProjectile implements Listener {
 			return;
 		}
 		
-		String prjType = prj.getType().getKey().getKey().toString().toUpperCase();
 		LivingEntity shooter = null;
 		if (!(source instanceof LivingEntity)) {
 			return;
@@ -41,8 +41,21 @@ public class TraceProjectile implements Listener {
 		
 		final Map<String, Object> dataMap = new HashMap<String, Object>();
         dataMap.put("name"   , shooter.getName());
+
+		String prjType = null;
+        for (Class<?> cls : Main.PROJECTILES) {
+        	if (cls.isInstance(prj)) {
+        		prjType = cls.getSimpleName().toUpperCase();
+        		break;
+        	}
+        }
+        
+        if (prjType == null) {
+        	return;
+        }
         
         // 데이터 조회
+        // 발사체 발사할 때 마다, 재연결 -> 탐색 -> 연결종료 함. 너무 비효율적임
         List<Map<String, Object>> result = Main.DQL.selectProjectile(prjType, dataMap);
         
         // DB 생성
@@ -117,7 +130,7 @@ public class TraceProjectile implements Listener {
 		// 발사체의 방향을 수정
 		missileVec = missileVec.add(target.getVelocity()); // 자동추격 대상의 속도를 적용
 		missileVec = missileVec.normalize(); // 자동추격 발사체의 힘을 1로 수정
-		missileVec = missileVec.multiply(prj.getVelocity().length() + 15); // 자동추격 발사체의 힘을 원래 발사체의 힘으로 수정
+		missileVec = missileVec.multiply(prj.getVelocity().length() + 30); // 자동추격 발사체의 힘을 원래 발사체의 힘으로 수정
 		
 		
 		Location direction = new Location(prj.getWorld(), 0, 0, 0);
