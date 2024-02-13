@@ -1,6 +1,7 @@
 package main;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,91 +56,130 @@ public class TraceProjectile implements Listener {
         }
         
         // 데이터 조회
-        // 발사체 발사할 때 마다, 재연결 -> 탐색 -> 연결종료 함. 너무 비효율적임
         List<Map<String, Object>> result = Main.DQL.selectProjectile(prjType, dataMap);
         
         // DB 생성
         if (result.size() <= 0) {
         	return;
         }
-        
-        // 조회 결과 출력
-        Main.DQL.printMapList(result);
 		
 		// 해당 발사체 유도 활성화 검사
+        Map<String, Object> asdf = result.get(0);
+        boolean isEnable = (((int) asdf.get("isEnable")) != 0);
+        boolean hasGravity = (((int) asdf.get("hasGravity")) != 0);
+        boolean isTrace = (((int) asdf.get("isTrace")) != 0);
+        int targetPriority = (int) asdf.get("targetPriority");
+        double minDistance = (double) asdf.get("minDistance");
+        double maxDistance = (double) asdf.get("maxDistance");
+        double recog_X_Range = (double) asdf.get("recog_X_Range");
+        double recog_Y_Range = (double) asdf.get("recog_Y_Range");
+        double recog_Z_Range = (double) asdf.get("recog_Z_Range");
+        double minAngle = (double) asdf.get("minAngle");
+        double maxAngle = (double) asdf.get("maxAngle");
+        
+        // 유도발사체 기능이 꺼져있으면
+        if (!isEnable) {
+        	return;
+        }
 		
+		// 
+		int standardUnit = 0; // 0 = 거리, 1 = 각도
+		int sort = 1; // 1 = 가장 가까운 대상, -1 = 가장 먼 대상
+		double minValue = Math.pow(minDistance, 2);
+		double maxValue = Math.pow(maxDistance, 2);
+		double localExtremumValue = maxAngle + maxValue + 1.0;
 		
+		// 조준선 
+		if (targetPriority == 2 || targetPriority == 3) {
+			standardUnit = 1;
+			minValue = minAngle;
+			maxValue = maxAngle;
+		}
 		
-		// 발사체 유도
+		if (targetPriority == 1 || targetPriority == 3) {
+			sort = -1;
+		}
 		
-		ArrayList<Entity> entities = new ArrayList<Entity>(shooter.getNearbyEntities(23, 23, 23));
+		// 인식범위 내 엔티티 검사
+		ArrayList<Entity> entities = null;
+		if (standardUnit == 0) {
+			entities = new ArrayList<Entity>(shooter.getNearbyEntities(maxDistance, maxDistance, maxDistance));
+		} else if (standardUnit == 1) {
+			entities = new ArrayList<Entity>(shooter.getNearbyEntities(recog_X_Range, recog_Y_Range, recog_Z_Range));
+		}
 		
 		if (entities.size() <= 0) {
 			return;
 		}
 		
-		// 가장 가까운 상대에게 유도
-		double minDistance = 10000.0;
-		double maxAngle = 1000.0;
-		LivingEntity target = null;
-		Vector missileVec = null;
+		LivingEntity missileTarget = null;
+		Vector missileVector = null;
 		for (Entity entity : entities) {
+			// 살아있는 엔티티가 아니면 스킵
 			if (!(entity instanceof LivingEntity)) {
 				continue;
 			}
 			
 			LivingEntity living_entity = (LivingEntity) entity;
 			
-			// 몹의 위치 - 내 위치
+			// 몹의 위치에서 내 위치를 빼서 두 위치 간 거리벡터 생성
 			Vector player2target_vec = new Vector(
 					living_entity.getEyeLocation().getX() - shooter.getEyeLocation().getX(),
 					(living_entity.getLocation().getY() + (living_entity.getHeight() / 2.0)) - shooter.getEyeLocation().getY(),
 					living_entity.getEyeLocation().getZ() - shooter.getEyeLocation().getZ());
 			
-			double angle = player2target_vec.angle(shooter.getLocation().getDirection()) * (180/Math.PI);
+			// 
+			double distance_or_angle = 0.0;
+			if (standardUnit == 0) {
+				distance_or_angle = player2target_vec.lengthSquared();
+			}
+			else if (standardUnit == 1) {
+				distance_or_angle = player2target_vec.angle(shooter.getLocation().getDirection()) * (180/Math.PI);
+			}
 			
-			if (angle > 70.0) {
+			if (minValue > distance_or_angle || distance_or_angle > maxValue) {
 				continue;
 			}
 			
-			// 거리
-			double distance = player2target_vec.lengthSquared();
-			System.out.println(living_entity.getName() + " : " + angle);
+			System.out.println(entity.getType() + " : " + distance_or_angle);
 			
-			if (maxAngle > angle) {
-				maxAngle = angle;
-				minDistance = distance;
-				target = living_entity;
-				missileVec = new Vector();
-				missileVec.setX(player2target_vec.getX());
-				missileVec.setY(player2target_vec.getY());
-				missileVec.setZ(player2target_vec.getZ());
+			if (localExtremumValue > sort * distance_or_angle) {
+				localExtremumValue = sort * distance_or_angle;
+				missileTarget = living_entity;
+				missileVector = new Vector();
+				missileVector.setX(player2target_vec.getX());
+				missileVector.setY(player2target_vec.getY());
+				missileVector.setZ(player2target_vec.getZ());
 			}
 		}
 		
-		
-		if (target == null) {
+		if (missileTarget == null) {
 			return;
 		}
 		
-		System.out.println(" -> " + target.getName() + " : " + maxAngle);
-		System.out.println(shooter.getVelocity());
-		
-		System.out.println("--------------------------------------------");
-		
 		// 발사체의 방향을 수정
-		missileVec = missileVec.add(target.getVelocity()); // 자동추격 대상의 속도를 적용
-		missileVec = missileVec.normalize(); // 자동추격 발사체의 힘을 1로 수정
-		missileVec = missileVec.multiply(prj.getVelocity().length() + 30); // 자동추격 발사체의 힘을 원래 발사체의 힘으로 수정
+		missileVector = missileVector.normalize(); // 자동추격 발사체의 힘을 1로 수정
+		missileVector = missileVector.multiply(prj.getVelocity().length()); // 자동추격 발사체의 힘을 원래 발사체의 힘으로 수정
 		
+		// 발사체가 바라보는 방향 수정
+		Vector Z_Axis = new Vector(0, 0, 1);
+		Vector XZ_Vector = new Vector(0, 0, 0);
+		XZ_Vector.setX(missileVector.getX());
+		XZ_Vector.setZ(missileVector.getZ());
+		float yaw = (float) (XZ_Vector.angle(Z_Axis) * (180/Math.PI));
+		yaw *= (XZ_Vector.getX() > 0.0) ? -1.0 : 1.0;
 		
-		Location direction = new Location(prj.getWorld(), 0, 0, 0);
-		direction.add(missileVec);
+		Vector Y_Axis = new Vector(0, 1, 0);
+		float pitch = (float) (missileVector.angle(Y_Axis) * (180/Math.PI));
+		pitch -= 90;
 		
-		prj.setVelocity(missileVec);
-		prj.setRotation(direction.getYaw(), direction.getPitch());
+		prj.setRotation(yaw, pitch);
 		
+		// 발사체 중력 여부
+		prj.setGravity(hasGravity);
 		
+		// 발사체 속도
+		prj.setVelocity(missileVector);
 		
 		// 죽음의 추격 활성화 시, SQL에 해당 발사체 등록 및 쓰레드 실행
 	}

@@ -128,7 +128,9 @@ public class Main extends JavaPlugin {
             		+ "  hasGravity			BOOLEAN     DEFAULT false,		 "+"\n"
             		+ "  minDistance		REAL     	DEFAULT 0.0,		 "+"\n"
             		+ "  maxDistance		REAL     	DEFAULT 23.0,		 "+"\n"
-            		+ "  RecogRange			REAL     	DEFAULT 23.0,		 "+"\n"
+            		+ "  recog_X_Range		REAL     	DEFAULT 23.0,		 "+"\n"
+            		+ "  recog_Y_Range		REAL     	DEFAULT 23.0,		 "+"\n"
+            		+ "  recog_Z_Range		REAL     	DEFAULT 23.0,		 "+"\n"
             		+ "  minAngle			REAL     	DEFAULT 0.0,		 "+"\n"
             		+ "  maxAngle			REAL     	DEFAULT 70.0,		 "+"\n"
             		+ "  lastModified      	DATETIME,						 "+"\n"
@@ -218,7 +220,9 @@ public class Main extends JavaPlugin {
 	            dataMap.put("hasGravity", true);
 	            dataMap.put("minDistance", 0.0);
 	            dataMap.put("maxDistance", 5.0);
-	            dataMap.put("RecogRange", 23.0);
+	            dataMap.put("recog_X_Range", 23.0);
+	            dataMap.put("recog_Y_Range", 23.0);
+	            dataMap.put("recog_Z_Range", 23.0);
 	            dataMap.put("minAngle", 0.0);
 	            dataMap.put("maxAngle", 70.0);
 	            DML.insertProjectile(prj, dataMap);
@@ -257,7 +261,9 @@ public class Main extends JavaPlugin {
 	            dataMap.put("hasGravity", true);
 	            dataMap.put("minDistance", 0.0);
 	            dataMap.put("maxDistance", 5.0);
-	            dataMap.put("RecogRange", 23.0);
+	            dataMap.put("recog_X_Range", 23.0);
+	            dataMap.put("recog_Y_Range", 23.0);
+	            dataMap.put("recog_Z_Range", 23.0);
 	            dataMap.put("minAngle", 0.0);
 	            dataMap.put("maxAngle", 70.0);
 	            DML.insertProjectile(prj, dataMap);

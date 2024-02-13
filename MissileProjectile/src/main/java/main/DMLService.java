@@ -167,11 +167,15 @@ public class DMLService extends SQLiteManager {
                    + "    hasGravity,                 "+"\n"
                    + "    minDistance,                "+"\n"
                    + "    maxDistance,                "+"\n"
-                   + "    RecogRange,                 "+"\n"
+                   + "    recog_X_Range,              "+"\n"
+                   + "    recog_Y_Range,              "+"\n"
+                   + "    recog_Z_Range,              "+"\n"
                    + "    minAngle,                   "+"\n"
                    + "    maxAngle,                   "+"\n"
            		   + "    lastModified      	      "+"\n"
                    + ") VALUES (                      "+"\n"
+                   + "    ?,                          "+"\n"
+                   + "    ?,                          "+"\n"
                    + "    ?,                          "+"\n"
                    + "    ?,                          "+"\n"
                    + "    ?,                          "+"\n"
@@ -209,10 +213,12 @@ public class DMLService extends SQLiteManager {
             pstmt.setObject(5,  dataMap.get("hasGravity"));
             pstmt.setObject(6,  dataMap.get("minDistance"));
             pstmt.setObject(7,  dataMap.get("maxDistance"));
-            pstmt.setObject(8,  dataMap.get("RecogRange"));
-            pstmt.setObject(9,  dataMap.get("minAngle"));
-            pstmt.setObject(10, dataMap.get("maxAngle"));
-            pstmt.setObject(11, DATETIME_FMT.format(new Date()));
+            pstmt.setObject(8,  dataMap.get("recog_X_Range"));
+            pstmt.setObject(9,  dataMap.get("recog_Y_Range"));
+            pstmt.setObject(10, dataMap.get("recog_Z_Range"));
+            pstmt.setObject(11, dataMap.get("minAngle"));
+            pstmt.setObject(12, dataMap.get("maxAngle"));
+            pstmt.setObject(13, DATETIME_FMT.format(new Date()));
  
             // 쿼리 실행
             pstmt.executeUpdate();
