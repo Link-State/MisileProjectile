@@ -1,20 +1,15 @@
 package main;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.bukkit.Location;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.Vector;
@@ -42,7 +37,8 @@ public class TraceProjectile implements Listener {
 		
 		final Map<String, Object> dataMap = new HashMap<String, Object>();
         dataMap.put("name"   , shooter.getName());
-
+        
+        // 해당 발사체 객체의 클래스 탐색
 		String prjType = null;
         for (Class<?> cls : Main.PROJECTILES) {
         	if (cls.isInstance(prj)) {
@@ -51,6 +47,7 @@ public class TraceProjectile implements Listener {
         	}
         }
         
+        // 발사체 클래스를 찾을 수 없으면 종료
         if (prjType == null) {
         	return;
         }
@@ -77,25 +74,25 @@ public class TraceProjectile implements Listener {
         double minAngle = (double) asdf.get("minAngle");
         double maxAngle = (double) asdf.get("maxAngle");
         
-        // 유도발사체 기능이 꺼져있으면
+        // 발사체유도 기능이 꺼져있으면
         if (!isEnable) {
         	return;
         }
 		
-		// 
 		int standardUnit = 0; // 0 = 거리, 1 = 각도
 		int sort = 1; // 1 = 가장 가까운 대상, -1 = 가장 먼 대상
 		double minValue = Math.pow(minDistance, 2);
 		double maxValue = Math.pow(maxDistance, 2);
 		double localExtremumValue = maxAngle + maxValue + 1.0;
 		
-		// 조준선 
+		// 우선순위 대상 - 조준선 설정
 		if (targetPriority == 2 || targetPriority == 3) {
 			standardUnit = 1;
 			minValue = minAngle;
 			maxValue = maxAngle;
 		}
 		
+		// 우선순위 대상 - 거리 설정
 		if (targetPriority == 1 || targetPriority == 3) {
 			sort = -1;
 		}
@@ -108,18 +105,25 @@ public class TraceProjectile implements Listener {
 			entities = new ArrayList<Entity>(shooter.getNearbyEntities(recog_X_Range, recog_Y_Range, recog_Z_Range));
 		}
 		
+		// 지정 범위 내 엔티티가 없으면 종료
 		if (entities.size() <= 0) {
 			return;
 		}
 		
-		LivingEntity missileTarget = null;
-		Vector missileVector = null;
+		LivingEntity missileTarget = null; // 발사체 유도 대상
+		Vector missileVector = null; // 발사체 유도 벡터
+		
+		// 타겟이 랜덤일 경우
+		if (targetPriority == 4) {
+			
+		}
+		
+		// 범위 내 모든 엔티티 순회
 		for (Entity entity : entities) {
 			// 살아있는 엔티티가 아니면 스킵
 			if (!(entity instanceof LivingEntity)) {
 				continue;
 			}
-			
 			LivingEntity living_entity = (LivingEntity) entity;
 			
 			// 몹의 위치에서 내 위치를 빼서 두 위치 간 거리벡터 생성
@@ -128,7 +132,7 @@ public class TraceProjectile implements Listener {
 					(living_entity.getLocation().getY() + (living_entity.getHeight() / 2.0)) - shooter.getEyeLocation().getY(),
 					living_entity.getEyeLocation().getZ() - shooter.getEyeLocation().getZ());
 			
-			// 
+			// 거리 또는 각도를 계산
 			double distance_or_angle = 0.0;
 			if (standardUnit == 0) {
 				distance_or_angle = player2target_vec.lengthSquared();
@@ -137,12 +141,12 @@ public class TraceProjectile implements Listener {
 				distance_or_angle = player2target_vec.angle(shooter.getLocation().getDirection()) * (180/Math.PI);
 			}
 			
+			// 최소거리, 최소각도, 최대거리, 최대각도 조건 확인
 			if (minValue > distance_or_angle || distance_or_angle > maxValue) {
 				continue;
 			}
 			
-			System.out.println(entity.getType() + " : " + distance_or_angle);
-			
+			// 극값(가장 멀리있거나 가장 가까이 있거나) 탐색
 			if (localExtremumValue > sort * distance_or_angle) {
 				localExtremumValue = sort * distance_or_angle;
 				missileTarget = living_entity;
@@ -153,26 +157,28 @@ public class TraceProjectile implements Listener {
 			}
 		}
 		
+		// 찾을 수 없으면 종료
 		if (missileTarget == null) {
 			return;
 		}
 		
-		// 발사체의 방향을 수정
+		
+		// 발사체 힘 수정
 		missileVector = missileVector.normalize(); // 자동추격 발사체의 힘을 1로 수정
 		missileVector = missileVector.multiply(prj.getVelocity().length()); // 자동추격 발사체의 힘을 원래 발사체의 힘으로 수정
-		
-		// 발사체가 바라보는 방향 수정
+
+		// 발사체가 바라봐야할 방향 계산
+		Vector Y_Axis = new Vector(0, 1, 0);
 		Vector Z_Axis = new Vector(0, 0, 1);
 		Vector XZ_Vector = new Vector(0, 0, 0);
 		XZ_Vector.setX(missileVector.getX());
 		XZ_Vector.setZ(missileVector.getZ());
 		float yaw = (float) (XZ_Vector.angle(Z_Axis) * (180/Math.PI));
-		yaw *= (XZ_Vector.getX() > 0.0) ? -1.0 : 1.0;
-		
-		Vector Y_Axis = new Vector(0, 1, 0);
 		float pitch = (float) (missileVector.angle(Y_Axis) * (180/Math.PI));
+		yaw *= (XZ_Vector.getX() > 0.0) ? -1.0 : 1.0; // x방향으로 양수 값일 때 yaw는 음수
 		pitch -= 90;
-		
+
+		// 발사체가 바라보는 방향 수정
 		prj.setRotation(yaw, pitch);
 		
 		// 발사체 중력 여부
@@ -182,5 +188,8 @@ public class TraceProjectile implements Listener {
 		prj.setVelocity(missileVector);
 		
 		// 죽음의 추격 활성화 시, SQL에 해당 발사체 등록 및 쓰레드 실행
+		if (isTrace) {
+			
+		}
 	}
 }
