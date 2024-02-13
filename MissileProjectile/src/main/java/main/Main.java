@@ -81,7 +81,7 @@ public class Main extends JavaPlugin {
         
 //		Bukkit.getPluginManager().registerEvents(new MissileShoot(), this);
 		Bukkit.getPluginManager().registerEvents(new PlayerIO(), this);
-		Bukkit.getPluginManager().registerEvents(new TraceProjectile(), this);
+		Bukkit.getPluginManager().registerEvents(new Missile(), this);
 	}
 	
 	@Override
