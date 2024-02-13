@@ -164,6 +164,7 @@ public class DMLService extends SQLiteManager {
                    + "    isEnable,                   "+"\n"
                    + "    targetPriority,             "+"\n"
                    + "    isTrace,                    "+"\n"
+                   + "    traceLife,                  "+"\n"
                    + "    hasGravity,                 "+"\n"
                    + "    minDistance,                "+"\n"
                    + "    maxDistance,                "+"\n"
@@ -174,6 +175,7 @@ public class DMLService extends SQLiteManager {
                    + "    maxAngle,                   "+"\n"
            		   + "    lastModified      	      "+"\n"
                    + ") VALUES (                      "+"\n"
+                   + "    ?,                          "+"\n"
                    + "    ?,                          "+"\n"
                    + "    ?,                          "+"\n"
                    + "    ?,                          "+"\n"
@@ -210,15 +212,16 @@ public class DMLService extends SQLiteManager {
             pstmt.setObject(2,  dataMap.get("isEnable"));
             pstmt.setObject(3,  dataMap.get("targetPriority"));
             pstmt.setObject(4,  dataMap.get("isTrace"));
-            pstmt.setObject(5,  dataMap.get("hasGravity"));
-            pstmt.setObject(6,  dataMap.get("minDistance"));
-            pstmt.setObject(7,  dataMap.get("maxDistance"));
-            pstmt.setObject(8,  dataMap.get("recog_X_Range"));
-            pstmt.setObject(9,  dataMap.get("recog_Y_Range"));
-            pstmt.setObject(10, dataMap.get("recog_Z_Range"));
-            pstmt.setObject(11, dataMap.get("minAngle"));
-            pstmt.setObject(12, dataMap.get("maxAngle"));
-            pstmt.setObject(13, DATETIME_FMT.format(new Date()));
+            pstmt.setObject(5,  dataMap.get("traceLife"));
+            pstmt.setObject(6,  dataMap.get("hasGravity"));
+            pstmt.setObject(7,  dataMap.get("minDistance"));
+            pstmt.setObject(8,  dataMap.get("maxDistance"));
+            pstmt.setObject(9,  dataMap.get("recog_X_Range"));
+            pstmt.setObject(10,  dataMap.get("recog_Y_Range"));
+            pstmt.setObject(11, dataMap.get("recog_Z_Range"));
+            pstmt.setObject(12, dataMap.get("minAngle"));
+            pstmt.setObject(13, dataMap.get("maxAngle"));
+            pstmt.setObject(14, DATETIME_FMT.format(new Date()));
  
             // 쿼리 실행
             pstmt.executeUpdate();

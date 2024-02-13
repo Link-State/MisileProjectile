@@ -70,6 +70,7 @@ public class Missile implements Listener {
         boolean isEnable = (((int) asdf.get("isEnable")) != 0);
         boolean hasGravity = (((int) asdf.get("hasGravity")) != 0);
         boolean isTrace = (((int) asdf.get("isTrace")) != 0);
+        int traceLife = (int) asdf.get("traceLife");
         int targetPriority = (int) asdf.get("targetPriority");
         double minDistance = (double) asdf.get("minDistance");
         double maxDistance = (double) asdf.get("maxDistance");
@@ -205,7 +206,7 @@ public class Missile implements Listener {
 		
 		// 죽음의 추격 활성화 시, SQL에 해당 발사체 등록 및 쓰레드 실행
 		if (isTrace) {
-			Runnable r1 = new TraceProjectile(prj, missileTarget);
+			Runnable r1 = new TraceProjectile(prj, missileTarget, traceLife);
 			Thread t1 = new Thread(r1);
 			t1.start();
 		}

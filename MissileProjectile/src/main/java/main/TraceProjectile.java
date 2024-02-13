@@ -12,10 +12,12 @@ public class TraceProjectile implements Runnable {
 	private Projectile projectile;
 	private LivingEntity target;
 	private Location prevLocation;
+	private int lifeTime;
 	
-	public TraceProjectile(Projectile prj, LivingEntity entity) {
+	public TraceProjectile(Projectile prj, LivingEntity entity, int life) {
 		this.projectile = prj;
 		this.target = entity;
+		this.lifeTime = life;
 		this.prevLocation = new Location(Bukkit.getWorlds().get(0), 0, 0, 0);
 		prj.getLocation(this.prevLocation);
 	}
@@ -23,7 +25,8 @@ public class TraceProjectile implements Runnable {
 	public void run() {
 		
 		int count = 0;
-		for (int i = 0; i < 1000; i++) {
+		int loop = this.lifeTime / 10;
+		for (int i = 0; i < loop; i++) {
 			threadSleep(10);
 
 			// 없어지면 종료

@@ -126,6 +126,7 @@ public class Main extends JavaPlugin {
             		+ "  targetPriority		INTEGER		DEFAULT 0,			 "+"\n"
             		+ "  isTrace			BOOLEAN		DEFAULT false,		 "+"\n"
             		+ "  hasGravity			BOOLEAN     DEFAULT false,		 "+"\n"
+            		+ "  traceLife			INTEGER     DEFAULT 10000,		 "+"\n"
             		+ "  minDistance		REAL     	DEFAULT 0.0,		 "+"\n"
             		+ "  maxDistance		REAL     	DEFAULT 23.0,		 "+"\n"
             		+ "  recog_X_Range		REAL     	DEFAULT 23.0,		 "+"\n"
@@ -217,6 +218,7 @@ public class Main extends JavaPlugin {
 	            dataMap.put("isEnable", false);
 	            dataMap.put("targetPriority", 0);
 	            dataMap.put("isTrace", false);
+	            dataMap.put("traceLife", 10000);
 	            dataMap.put("hasGravity", true);
 	            dataMap.put("minDistance", 0.0);
 	            dataMap.put("maxDistance", 5.0);
@@ -258,6 +260,7 @@ public class Main extends JavaPlugin {
 	            dataMap.put("isEnable", false);
 	            dataMap.put("targetPriority", 0);
 	            dataMap.put("isTrace", false);
+	            dataMap.put("traceLife", 5000);
 	            dataMap.put("hasGravity", true);
 	            dataMap.put("minDistance", 0.0);
 	            dataMap.put("maxDistance", 5.0);
