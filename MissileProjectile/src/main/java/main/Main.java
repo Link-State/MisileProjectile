@@ -30,6 +30,7 @@ import main.DDLService.ResultType;
 
 public class Main extends JavaPlugin {
 	public static Plugin PLUGINS = null;
+	public static Main MAIN = null;
 	public static String DB_URL = null;
 	public static HashSet<Class<?>> PROJECTILES = null;
 	
@@ -40,6 +41,7 @@ public class Main extends JavaPlugin {
 	@Override
 	public void onEnable() {
 		PLUGINS = Bukkit.getPluginManager().getPlugin("MissileProjectile");
+		MAIN = this;
 		DB_URL = "jdbc:sqlite:" + PLUGINS.getDataFolder() + File.separator + "data.db";
 		PROJECTILES = new HashSet<Class<?>>();
 		

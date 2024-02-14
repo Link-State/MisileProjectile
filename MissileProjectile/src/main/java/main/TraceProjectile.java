@@ -1,16 +1,10 @@
 package main;
 
-import java.util.ArrayList;
-import java.util.Set;
-
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.AbstractArrow;
-import org.bukkit.entity.ComplexEntityPart;
-import org.bukkit.entity.ComplexLivingEntity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Projectile;
-import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
 public class TraceProjectile implements Runnable {
