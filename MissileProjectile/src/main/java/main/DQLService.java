@@ -27,6 +27,7 @@ public class DQLService extends SQLiteManager {
                          + "     , isEnable           "+"\n"
                          + "     , targetPriority     "+"\n"
                          + "     , isTrace            "+"\n"
+                         + "     , traceLife          "+"\n"
                          + "     , hasGravity         "+"\n"
                          + "     , minDistance        "+"\n"
                          + "     , maxDistance        "+"\n"

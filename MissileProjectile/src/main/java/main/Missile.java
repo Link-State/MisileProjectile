@@ -129,6 +129,10 @@ public class Missile implements Listener {
 			}
 			LivingEntity living_entity = (LivingEntity) entity;
 			
+			if (!living_entity.hasLineOfSight(shooter)) {
+				continue;
+			}
+			
 			// 타겟을 랜덤으로 정한 경우
 			if (targetPriority == 4) {
 				// 살아있는 엔티티만 저장

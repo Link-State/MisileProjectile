@@ -79,7 +79,6 @@ public class Main extends JavaPlugin {
         	e.printStackTrace();
         }
         
-//		Bukkit.getPluginManager().registerEvents(new MissileShoot(), this);
 		Bukkit.getPluginManager().registerEvents(new PlayerIO(), this);
 		Bukkit.getPluginManager().registerEvents(new Missile(), this);
 	}
@@ -170,12 +169,41 @@ public class Main extends JavaPlugin {
         // 상수 설정
         //   - Data를 저장할 객체 생성
         //     * 입력/수정/삭제/조회 에서 공통으로 사용
+		OfflinePlayer[] all_players = Bukkit.getOfflinePlayers();
+		EntityType[] all_entities = EntityType.values();
 		ArrayList<String> projectiles = new ArrayList<String>();
 		for (Class<?> cls : PROJECTILES) {
 			projectiles.add(cls.getSimpleName().toUpperCase());
 		}
 		
-        final Map<String, Object> dataMap = new HashMap<String, Object>();
+		insertInitGlobal(projectiles);
+
+		for (OfflinePlayer offline_p : all_players) {
+			String name = offline_p.getName();
+			String uuid = offline_p.getUniqueId().toString().toUpperCase();
+			insertInitShooter(name, uuid, 0);
+
+			for (String prj : projectiles) {
+				insertInitProjectile(name, prj);
+			}
+		}
+
+		for (EntityType entity : all_entities) {
+			if (!entity.isAlive() || entity.equals(EntityType.PLAYER)) {
+				continue;
+			}
+
+			String name = entity.getKey().getKey().toUpperCase();
+			insertInitShooter(name, "", 1);
+            
+			for (String prj : projectiles) {
+				insertInitProjectile(name, prj);
+			}
+		}
+	}
+	
+	public void insertInitGlobal(ArrayList<String> projectiles) throws SQLException {
+		final Map<String, Object> dataMap = new HashMap<String, Object>();
         dataMap.put("id", 1);
         
         List<Map<String, Object>> resultList = DQL.selectGlobal(dataMap);
@@ -188,89 +216,47 @@ public class Main extends JavaPlugin {
                 System.out.println("[MissileProjectile] init data input failed");
             }
         }
+	}
+	
+	public void insertInitShooter(String name, String uuid, int type) throws SQLException {
+        final Map<String, Object> dataMap = new HashMap<String, Object>();
+        List<Map<String, Object>> resultList = DQL.selectGlobal(dataMap);
         
+		dataMap.put("name", name);
+        resultList = DQL.selectShooter(dataMap);
+
+        if (resultList.size() > 0) {
+        	return;
+        }
         
-		OfflinePlayer[] all_players = Bukkit.getOfflinePlayers();
-		EntityType[] all_entities = EntityType.values();
-
-		for (OfflinePlayer offline_p : all_players) {
-			dataMap.clear();
-			
-			// Shooter
-			dataMap.put("name", offline_p.getName());
-            resultList = DQL.selectShooter(dataMap);
-
-            if (resultList.size() <= 0) {
-    			dataMap.put("uuid", offline_p.getUniqueId().toString().toUpperCase());
-    			dataMap.put("entityType", 0);
-    			DML.insertShooter(dataMap);
-            }
-
-			for (String prj : projectiles) {
-				dataMap.clear();
-	            dataMap.put("name", offline_p.getName());
-	            resultList = DQL.selectProjectile(prj, dataMap);
-	            
-	            if (resultList.size() > 0) {
-	            	continue;
-	            }
-	            
-	            dataMap.put("isEnable", false);
-	            dataMap.put("targetPriority", 0);
-	            dataMap.put("isTrace", false);
-	            dataMap.put("traceLife", 10000);
-	            dataMap.put("hasGravity", true);
-	            dataMap.put("minDistance", 0.0);
-	            dataMap.put("maxDistance", 5.0);
-	            dataMap.put("recog_X_Range", 23.0);
-	            dataMap.put("recog_Y_Range", 23.0);
-	            dataMap.put("recog_Z_Range", 23.0);
-	            dataMap.put("minAngle", 0.0);
-	            dataMap.put("maxAngle", 70.0);
-	            DML.insertProjectile(prj, dataMap);
-			}
-		}
-
-		for (EntityType entity : all_entities) {
-			if (!entity.isAlive() || entity.equals(EntityType.PLAYER)) {
-				continue;
-			}
-
-			dataMap.clear();
-			
-			// Shooter
-			dataMap.put("name", entity.getKey().getKey().toUpperCase());
-            resultList = DQL.selectShooter(dataMap);
-
-            if (resultList.size() <= 0) {
-    			dataMap.put("uuid", "");
-    			dataMap.put("entityType", 1);
-    			DML.insertShooter(dataMap);
-            }
-
-			for (String prj : projectiles) {
-				dataMap.clear();
-	            dataMap.put("name", entity.getKey().getKey().toUpperCase());
-	            resultList = DQL.selectProjectile(prj, dataMap);
-	            
-	            if (resultList.size() > 0) {
-	            	continue;
-	            }
-	            
-	            dataMap.put("isEnable", false);
-	            dataMap.put("targetPriority", 0);
-	            dataMap.put("isTrace", false);
-	            dataMap.put("traceLife", 5000);
-	            dataMap.put("hasGravity", true);
-	            dataMap.put("minDistance", 0.0);
-	            dataMap.put("maxDistance", 5.0);
-	            dataMap.put("recog_X_Range", 23.0);
-	            dataMap.put("recog_Y_Range", 23.0);
-	            dataMap.put("recog_Z_Range", 23.0);
-	            dataMap.put("minAngle", 0.0);
-	            dataMap.put("maxAngle", 70.0);
-	            DML.insertProjectile(prj, dataMap);
-			}
-		}
+		dataMap.put("uuid", uuid);
+		dataMap.put("entityType", type);
+		DML.insertShooter(dataMap);
+	}
+	
+	public void insertInitProjectile(String name, String prj) throws SQLException {
+        final Map<String, Object> dataMap = new HashMap<String, Object>();
+        List<Map<String, Object>> resultList = DQL.selectGlobal(dataMap);
+        
+		dataMap.put("name", name);
+        resultList = DQL.selectProjectile(prj, dataMap);
+        
+        if (resultList.size() > 0) {
+        	return;
+        }
+        
+        dataMap.put("isEnable", false);
+        dataMap.put("targetPriority", 0);
+        dataMap.put("isTrace", false);
+        dataMap.put("traceLife", 5000);
+        dataMap.put("hasGravity", true);
+        dataMap.put("minDistance", 0.0);
+        dataMap.put("maxDistance", 5.0);
+        dataMap.put("recog_X_Range", 23.0);
+        dataMap.put("recog_Y_Range", 23.0);
+        dataMap.put("recog_Z_Range", 23.0);
+        dataMap.put("minAngle", 0.0);
+        dataMap.put("maxAngle", 70.0);
+        DML.insertProjectile(prj, dataMap);
 	}
 }

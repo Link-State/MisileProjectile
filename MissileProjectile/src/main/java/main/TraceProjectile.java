@@ -1,11 +1,16 @@
 package main;
 
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.Set;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.entity.AbstractArrow;
+import org.bukkit.entity.ComplexEntityPart;
+import org.bukkit.entity.ComplexLivingEntity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Projectile;
+import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
 public class TraceProjectile implements Runnable {
@@ -23,7 +28,6 @@ public class TraceProjectile implements Runnable {
 	}
 	
 	public void run() {
-		
 		int count = 0;
 		int loop = this.lifeTime / 10;
 		for (int i = 0; i < loop; i++) {
@@ -56,6 +60,18 @@ public class TraceProjectile implements Runnable {
 				count = 0;
 			}
 			
+			// 히트박스가 한 개인 엔티티
+			// 여러개인 경우도 만들기~
+			if (this.target.getBoundingBox().overlaps(this.projectile.getBoundingBox())) {
+				return;
+			}
+			
+			//
+			if (this.projectile instanceof AbstractArrow) {
+				AbstractArrow asd = (AbstractArrow) this.projectile;
+//				System.out.println(asd.);
+			}
+			
 			
 			// 위치 업데이트
 			this.projectile.getLocation(this.prevLocation);
@@ -77,7 +93,6 @@ public class TraceProjectile implements Runnable {
 		try {
 			Thread.sleep(time);
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
