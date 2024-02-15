@@ -1,5 +1,6 @@
 package main;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +12,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.util.Vector;
@@ -58,7 +60,8 @@ public class Missile implements Listener {
         }
         
         // 데이터 조회
-        List<Map<String, Object>> result = Main.DQL.selectProjectile(prjType, dataMap);
+        DQLService DQL = new DQLService(Main.DB_URL);
+        List<Map<String, Object>> result = DQL.selectProjectile(prjType, dataMap);
         
         // DB 생성
         if (result.size() <= 0) {
@@ -66,19 +69,19 @@ public class Missile implements Listener {
         }
 		
 		// 해당 발사체 유도 활성화 검사
-        Map<String, Object> asdf = result.get(0);
-        boolean isEnable = (((int) asdf.get("isEnable")) != 0);
-        boolean hasGravity = (((int) asdf.get("hasGravity")) != 0);
-        boolean isTrace = (((int) asdf.get("isTrace")) != 0);
-        int traceLife = (int) asdf.get("traceLife");
-        int targetPriority = (int) asdf.get("targetPriority");
-        double minDistance = (double) asdf.get("minDistance");
-        double maxDistance = (double) asdf.get("maxDistance");
-        double recog_X_Range = (double) asdf.get("recog_X_Range");
-        double recog_Y_Range = (double) asdf.get("recog_Y_Range");
-        double recog_Z_Range = (double) asdf.get("recog_Z_Range");
-        double minAngle = (double) asdf.get("minAngle");
-        double maxAngle = (double) asdf.get("maxAngle");
+        Map<String, Object> projectile_data = result.get(0);
+        boolean isEnable = (((int) projectile_data.get("isEnable")) != 0);
+        boolean hasGravity = (((int) projectile_data.get("hasGravity")) != 0);
+        boolean isTrace = (((int) projectile_data.get("isTrace")) != 0);
+        int traceLife = (int) projectile_data.get("traceLife");
+        int targetPriority = (int) projectile_data.get("targetPriority");
+        double minDistance = (double) projectile_data.get("minDistance");
+        double maxDistance = (double) projectile_data.get("maxDistance");
+        double recog_X_Range = (double) projectile_data.get("recog_X_Range");
+        double recog_Y_Range = (double) projectile_data.get("recog_Y_Range");
+        double recog_Z_Range = (double) projectile_data.get("recog_Z_Range");
+        double minAngle = (double) projectile_data.get("minAngle");
+        double maxAngle = (double) projectile_data.get("maxAngle");
         
         // 발사체유도 기능이 꺼져있으면
         if (!isEnable) {
@@ -208,13 +211,103 @@ public class Missile implements Listener {
 		// 발사체 속도
 		prj.setVelocity(missileVector);
 		
-		// 죽음의 추격 활성화 시, SQL에 해당 발사체 등록 및 쓰레드 실행
+		// 죽음의 추격
 		if (isTrace) {
 			Runnable r1 = new TraceProjectile(prj, missileTarget, traceLife);
 			Thread t1 = new Thread(r1);
+			
+			// SQL에 발사체 UUID : 쓰레드 ID
+			dataMap.clear();
+			dataMap.put("uuid", prj.getUniqueId().toString());
+			dataMap.put("target_uuid", missileTarget.getUniqueId().toString());
+			dataMap.put("threadID", t1.getId());
+
+	        List<Map<String, Object>> resultList = DQL.selectAliveProjectile(dataMap);
+	        
+	        // 해당 UUID가 이미 존재하면 종료
+	        if (resultList.size() > 0) {
+	        	return;
+	        }
+	        
+	        // SQL에 해당 UUID:threadID 저장
+			try {
+	            DMLService DML = new DMLService(Main.DB_URL);
+				DML.insertAliveProjectile(dataMap);
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+				return;
+			}
+			
 			t1.start();
 		}
 	}
+	
+	
+	@EventHandler
+	public void hitMissile(ProjectileHitEvent e) {
+		Projectile prj = e.getEntity();
+		
+		if (e.getHitEntity() == null) {
+			return;
+		}
+		
+		// 타격한 발사체가 sql에 존재하는지 검사
+		final Map<String, Object> dataMap = new HashMap<String, Object>();
+		dataMap.put("uuid", prj.getUniqueId().toString());
+
+        DQLService DQL = new DQLService(Main.DB_URL);
+        List<Map<String, Object>> result = DQL.selectAliveProjectile(dataMap);
+        
+        if (result.size() <= 0) {
+        	return;
+        }
+		
+        Map<String, Object> prj_record = result.get(0);
+        String target_uuid = (String) prj_record.get("target_uuid");
+        
+        // 타겟의 uuid와 적중한 엔티티의 uuid가 일치하지 않으면
+        if (!target_uuid.equals(e.getHitEntity().getUniqueId().toString())) {
+        	return;
+        }
+        
+		long threadID = Long.parseLong(prj_record.get("threadID").toString());
+		Thread thread = null;
+		
+		// 쓰레드ID로 해당 쓰레드 탐색
+		ThreadGroup rootGroup = Thread.currentThread().getThreadGroup();
+		ThreadGroup parentGroup;
+		while ((parentGroup = rootGroup.getParent()) != null) {
+			rootGroup = parentGroup;
+		}
+		
+		Thread[] threads = new Thread[rootGroup.activeCount()];
+		
+		while (rootGroup.enumerate(threads, true) == threads.length) {
+			threads = new Thread[threads.length * 2];
+		}
+		
+		for (Thread t : threads) {
+			if (t.getId() == threadID) {
+				thread = t;
+				break;
+			}
+		}
+		
+		// 해당 쓰레드를 찾지 못했으면 종료
+		if (thread == null) {
+			// 해당 레코드 삭제
+			try {
+	            DMLService DML = new DMLService(Main.DB_URL);
+				DML.deleteAliveProjectile(dataMap);
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			}
+			return;
+		}
+		
+//		thread.interrupt();
+	}
+	
 	
 	// 두 엔티티 위치를 이용하여 발사자->대상 벡터 구하는 함수
 	public Vector distanceVector(LivingEntity target, LivingEntity shooter) {

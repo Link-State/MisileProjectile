@@ -33,10 +33,6 @@ public class Main extends JavaPlugin {
 	public static Main MAIN = null;
 	public static String DB_URL = null;
 	public static HashSet<Class<?>> PROJECTILES = null;
-	
-	public static DDLService DDL = null;
-	public static DMLService DML = null;
-	public static DQLService DQL = null;
     
 	@Override
 	public void onEnable() {
@@ -70,10 +66,6 @@ public class Main extends JavaPlugin {
     		}
         }
         
-        DDL = new DDLService(DB_URL);
-        DML = new DMLService(DB_URL);
-        DQL = new DQLService(DB_URL);
-        
         try {
         	createSchema();   // 테이블 생성
         }
@@ -98,7 +90,6 @@ public class Main extends JavaPlugin {
 	
 	// 테이블 생성 함수
 	public void createSchema() throws SQLException {
-
         // 공통 테이블 생성
         final String Global_Schema = "CREATE TABLE IF NOT EXISTS Global ( 							"+"\n"
         		+ "  id					INTEGER				PRIMARY KEY			AUTOINCREMENT,		"+"\n"
@@ -141,15 +132,24 @@ public class Main extends JavaPlugin {
             createTable(prj, ProjectileMap_SQL);
         }
         
-        // DB 연결 종료
-        DDL.closeConnection();
-
+        // 죽음의 추적중인 발사체 테이블 생성
+        final String Alive_Projectile_Schema = "CREATE TABLE IF NOT EXISTS Alive_Projectile ( "+"\n"
+        		+ "  uuid      	  		TEXT,					"+"\n"
+        		+ "  target_uuid      	TEXT,					"+"\n"
+        		+ "  threadID			TEXT        NOT NULL,   "+"\n"
+        		+ "  lastModified      	DATETIME,				"+"\n"
+        		+ "  PRIMARY KEY (uuid)         				)";
+        createTable("Alive_Projectile", Alive_Projectile_Schema);
+        
         
         // 초기데이터 삽입
         insertInitData();
 	}
 	
 	public void createTable(String name, String sql) throws SQLException {
+
+		DDLService DDL = new DDLService(DB_URL);
+		
 		 // 테이블 생성
         ResultType result = DDL.createTable(name, sql);
  
@@ -165,6 +165,9 @@ public class Main extends JavaPlugin {
                 System.out.println("[MissileProjectile] Failed Create Table - " + name);
                 break;
         }
+
+        // DB 연결 종료
+        DDL.closeConnection();
 	}
 	
 	public void insertInitData() throws SQLException {
@@ -205,6 +208,8 @@ public class Main extends JavaPlugin {
 	}
 	
 	public void insertInitGlobal(ArrayList<String> projectiles) throws SQLException {
+		DQLService DQL = new DQLService(DB_URL);
+		
 		final Map<String, Object> dataMap = new HashMap<String, Object>();
         dataMap.put("id", 1);
         
@@ -213,7 +218,9 @@ public class Main extends JavaPlugin {
             dataMap.put("projectile", String.join(",", projectiles));
             
             // 데이터 입력
+    		DMLService DML = new DMLService(DB_URL);
             int inserted = DML.insertGlobal(dataMap);
+            
             if( inserted < 0 ) {
                 System.out.println("[MissileProjectile] init data input failed");
             }
@@ -221,6 +228,8 @@ public class Main extends JavaPlugin {
 	}
 	
 	public void insertInitShooter(String name, String uuid, int type) throws SQLException {
+		DQLService DQL = new DQLService(DB_URL);
+		
         final Map<String, Object> dataMap = new HashMap<String, Object>();
         List<Map<String, Object>> resultList = DQL.selectGlobal(dataMap);
         
@@ -230,13 +239,18 @@ public class Main extends JavaPlugin {
         if (resultList.size() > 0) {
         	return;
         }
-        
+		
+		// 데이터 입력
 		dataMap.put("uuid", uuid);
 		dataMap.put("entityType", type);
+		
+		DMLService DML = new DMLService(DB_URL);
 		DML.insertShooter(dataMap);
 	}
 	
 	public void insertInitProjectile(String name, String prj) throws SQLException {
+		DQLService DQL = new DQLService(DB_URL);
+		
         final Map<String, Object> dataMap = new HashMap<String, Object>();
         List<Map<String, Object>> resultList = DQL.selectGlobal(dataMap);
         
@@ -247,18 +261,21 @@ public class Main extends JavaPlugin {
         	return;
         }
         
+        // 데이터 입력
         dataMap.put("isEnable", false);
-        dataMap.put("targetPriority", 0);
+        dataMap.put("targetPriority", 2);
         dataMap.put("isTrace", false);
         dataMap.put("traceLife", 5000);
         dataMap.put("hasGravity", true);
         dataMap.put("minDistance", 0.0);
-        dataMap.put("maxDistance", 5.0);
-        dataMap.put("recog_X_Range", 23.0);
-        dataMap.put("recog_Y_Range", 23.0);
-        dataMap.put("recog_Z_Range", 23.0);
+        dataMap.put("maxDistance", 25.0);
+        dataMap.put("recog_X_Range", 25.0);
+        dataMap.put("recog_Y_Range", 25.0);
+        dataMap.put("recog_Z_Range", 25.0);
         dataMap.put("minAngle", 0.0);
         dataMap.put("maxAngle", 70.0);
+        
+		DMLService DML = new DMLService(DB_URL);
         DML.insertProjectile(prj, dataMap);
 	}
 }

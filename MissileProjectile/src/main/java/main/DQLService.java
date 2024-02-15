@@ -18,6 +18,80 @@ public class DQLService extends SQLiteManager {
     public DQLService(String url) {
         super(url);
     }
+    
+    public List<Map<String, Object>> selectAliveProjectile(Map<String, Object> dataMap){
+        // 상수설정
+        //   - SQL
+        final String query = "SELECT uuid            "+"\n"
+        				+ "     , target_uuid        "+"\n"
+                        + "     , threadID           "+"\n"
+                        + "  FROM Alive_Projectile   "+"\n"
+                        + "  WHERE uuid = ?    	  "+"\n";
+        
+        //   - 조회 결과 변수
+        final Set<String> columnNames = new HashSet<String>();        
+        final List<Map<String, Object>> selected = new ArrayList<Map<String, Object>>();
+ 
+        // 변수설정
+        //   - Database 변수
+        Connection conn = ensureConnection();
+        PreparedStatement pstmt = null;
+        ResultSetMetaData meta = null;
+        
+        try {
+            // PreparedStatement 객체 생성
+            pstmt = conn.prepareStatement(query);
+            
+            // 조회 데이터 조건 매핑
+            pstmt.setObject(1, dataMap.get("uuid"));
+            
+            // 데이터 조회
+            ResultSet rs = pstmt.executeQuery();
+            
+            // 조회된 데이터의 컬럼명 저장
+            meta = pstmt.getMetaData();
+            for(int i=1; i<=meta.getColumnCount(); i++) {
+                columnNames.add(meta.getColumnName(i));
+            }
+            
+            // ResultSet -> List<Map> 객체
+            Map<String, Object> resultMap = null;
+            
+            while(rs.next()) {
+                resultMap = new HashMap<String, Object>();
+                
+                for(String column : columnNames) {
+                    resultMap.put(column, rs.getObject(column));
+                }
+                
+                if( resultMap != null ) {
+                    selected.add(resultMap);
+                }
+            }
+            
+        } catch (SQLException e) {
+            // 오류처리
+            System.out.println(e.getMessage());
+            
+        } finally  {
+            try {
+                // PreparedStatement 종료
+                if( pstmt != null ) {
+                    pstmt.close();
+                }
+                
+                // Database 연결 종료
+                closeConnection();
+                
+            } catch ( SQLException e ) {
+                e.printStackTrace();
+            }
+        }
+ 
+        // 결과 반환
+        //   - 조회된 데이터 리스트
+        return selected;
+    }
  
     // 데이터 조회 함수
     public List<Map<String, Object>> selectProjectile(String projectile, Map<String, Object> dataMap){
